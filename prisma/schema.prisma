@@ -8,34 +8,35 @@ datasource db {
 }
 
 model User {
-  id                 Int                @id @default(autoincrement())
+  id                 Int             @id @default(autoincrement())
   name               String
-  email              String             @unique
+  email              String          @unique
   password           String
   age                Int?
   logo               String?
-  currency           String             @default("USD")
-  timezone           String             @default("UTC")
-  theme              String             @default("light") 
-  twoFactorEnabled   Boolean            @default(false)
-  isProfileCompleted Boolean            @default(false)
-  isActive           Boolean            @default(true)
-  
-  role               UserRole           @default(ADMIN) 
-  permissions        String?           
-  
-  organizationId     Int?               // Links to organization/workspace
-  invitedBy          Int?               // Who invited this user
-  
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  
-  // Relations
-  organization       Organization?      @relation("OrgMembers", fields: [organizationId], references: [id], onDelete: Cascade)
-  ownedOrganization  Organization?      @relation("OrgOwner")
-  inviter            User?              @relation("UserInvites", fields: [invitedBy], references: [id], onDelete: SetNull)
-  invitedUsers       User[]             @relation("UserInvites")
-  
+  currency           String          @default("USD")
+  timezone           String          @default("UTC")
+  theme              String          @default("light")
+  twoFactorEnabled   Boolean         @default(false)
+  isProfileCompleted Boolean         @default(false)
+  isActive           Boolean         @default(true)
+
+  role               UserRole        @default(ADMIN)
+  systemRole         SystemRole      @default(ADMIN)
+  permissions        String?
+
+  organizationId     Int?
+  invitedBy          Int?
+
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  //                 Relations
+  organization       Organization?  @relation("OrgMembers", fields: [organizationId], references: [id], onDelete: Cascade)
+  ownedOrganization  Organization?  @relation("OrgOwner")
+  inviter            User?          @relation("UserInvites", fields: [invitedBy], references: [id], onDelete: SetNull)
+  invitedUsers       User[]         @relation("UserInvites")
+
   clients            Client[]
   projects           Project[]
   tasks              Task[]
@@ -50,12 +51,18 @@ model User {
   events             Event[]
   files              File[]
   messages           Message[]
-  referrals          Referral[]         @relation("ReferredBy")
-  referredUsers      Referral[]         @relation("Referrer")
-  
+  referrals          Referral[]     @relation("ReferredBy")
+  referredUsers      Referral[]     @relation("Referrer")
+
   @@index([email])
   @@index([organizationId])
   @@index([role])
+}
+
+
+enum SystemRole {
+  ADMIN
+  SUPER_ADMIN
 }
 
 enum UserRole {
@@ -68,27 +75,27 @@ enum UserRole {
 
 // ============ ORGANIZATION/WORKSPACE ============
 model Organization {
-  id              Int                @id @default(autoincrement())
-  name            String
-  logo            String?
-  website         String?
-  address         String?
-  phone           String?
-  email           String?
-  
-  planType        PlanType           @default(FREE)
-  maxTeamMembers  Int                @default(5)
-  maxProjects     Int                @default(10)
-  maxClients      Int                @default(50)
-  
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  
-  ownerId         Int                @unique
-  owner           User               @relation("OrgOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members         User[]             @relation("OrgMembers")
-  invitations     Invitation[]
-  
+  id             Int           @id @default(autoincrement())
+  name           String
+  logo           String?
+  website        String?
+  address        String?
+  phone          String?
+  email          String?
+
+  planType       PlanType      @default(FREE)
+  maxTeamMembers Int           @default(5)
+  maxProjects    Int           @default(10)
+  maxClients     Int           @default(50)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  ownerId        Int           @unique
+  owner          User         @relation("OrgOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members        User[]       @relation("OrgMembers")
+  invitations    Invitation[]
+
   @@index([ownerId])
 }
 
@@ -100,20 +107,20 @@ enum PlanType {
 }
 
 model Invitation {
-  id              Int                @id @default(autoincrement())
-  email           String
-  role            UserRole           @default(TEAM_MEMBER)
-  token           String             @unique
-  status          InvitationStatus   @default(PENDING)
-  expiresAt       DateTime
-  acceptedAt      DateTime?
-  createdAt       DateTime           @default(now())
-  
-  organizationId  Int
-  invitedBy       Int               
-  
-  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+  id             Int               @id @default(autoincrement())
+  email          String
+  role           UserRole          @default(TEAM_MEMBER)
+  token          String            @unique
+  status         InvitationStatus  @default(PENDING)
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime          @default(now())
+
+  organizationId Int
+  invitedBy      Int
+
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@index([organizationId])
   @@index([email])
   @@index([token])
@@ -129,38 +136,38 @@ enum InvitationStatus {
 
 // ============ ROLE PERMISSIONS ============
 model Permission {
-  id          Int      @id @default(autoincrement())
+  id                                                                 Int       @id @default(autoincrement())
   module      String   // e.g., "clients", "projects", "invoices"
   action      String   // e.g., "create", "read", "update", "delete"
-  role        UserRole
-  
+  role                                                               UserRole
+
   @@unique([module, action, role])
   @@index([role])
 }
 
 // ============ CLIENT MANAGEMENT ============
 model Client {
-  id              Int                @id @default(autoincrement())
-  name            String
-  email           String?
-  phone           String?
-  website         String?
-  address         String?
-  status          ClientStatus       @default(POTENTIAL)
-  notes           String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  userId          Int
-  organizationId  Int?             
-  
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projects        Project[]
-  invoices        Invoice[]
-  proposals       Proposal[]
-  contracts       Contract[]
-  communicationLogs CommunicationLog[]
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  email              String?
+  phone              String?
+  website            String?
+  address            String?
+  status             ClientStatus         @default(POTENTIAL)
+  notes              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  userId             Int
+  organizationId     Int?
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects           Project[]
+  invoices           Invoice[]
+  proposals          Proposal[]
+  contracts          Contract[]
+  communicationLogs  CommunicationLog[]
   clientPortalAccess ClientPortalAccess?
-  
+
   @@index([userId])
   @@index([organizationId])
   @@index([status])
@@ -174,43 +181,43 @@ enum ClientStatus {
 }
 
 model CommunicationLog {
-  id          Int      @id @default(autoincrement())
-  clientId    Int
-  subject     String
-  content     String
-  date        DateTime @default(now())
-  type        String
-  
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  id       Int       @id @default(autoincrement())
+  clientId Int
+  subject  String
+  content  String
+  date     DateTime  @default(now())
+  type     String
+
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([clientId])
 }
 
 // ============ PROJECT MANAGEMENT ============
 model Project {
-  id              Int              @id @default(autoincrement())
-  name            String
-  description     String?
-  deadline        DateTime?
-  priority        Priority         @default(MEDIUM)
-  progress        Int              @default(0)
-  status          ProjectStatus    @default(ACTIVE)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  userId          Int
-  clientId        Int?
-  organizationId  Int?
-  
-  // Relations
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client          Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  tasks           Task[]
-  milestones      Milestone[]
-  files           File[]
-  expenses        Expense[]
-  timeEntries     TimeEntry[]
-  teamMembers     TeamMember[]
-  
+  id             Int            @id @default(autoincrement())
+  name           String
+  description    String?
+  deadline       DateTime?
+  priority       Priority       @default(MEDIUM)
+  progress       Int            @default(0)
+  status         ProjectStatus  @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  userId         Int
+  clientId       Int?
+  organizationId Int?
+
+  //             Relations
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client         Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  tasks          Task[]
+  milestones     Milestone[]
+  files          File[]
+  expenses       Expense[]
+  timeEntries    TimeEntry[]
+  teamMembers    TeamMember[]
+
   @@index([userId])
   @@index([clientId])
   @@index([organizationId])
@@ -231,40 +238,40 @@ enum ProjectStatus {
 }
 
 model Milestone {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   projectId   Int
   title       String
   description String?
   dueDate     DateTime?
-  completed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  completed   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   @@index([projectId])
 }
 
 // ============ TASK & TIME TRACKING ============
 model Task {
-  id              Int          @id @default(autoincrement())
-  title           String
-  description     String?
-  status          TaskStatus   @default(TODO)
-  isBillable      Boolean      @default(true)
-  dueDate         DateTime?
-  completed       Boolean      @default(false)
+  id                                                   Int          @id @default(autoincrement())
+  title                                                String
+  description                                          String?
+  status                                               TaskStatus   @default(TODO)
+  isBillable                                           Boolean      @default(true)
+  dueDate                                              DateTime?
+  completed                                            Boolean      @default(false)
   assignedTo      Int?         // Assigned team member
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  userId          Int
-  projectId       Int?
-  
-  // Relations
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project         Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  timeEntries     TimeEntry[]
-  subtasks        Subtask[]
-  
+  createdAt                                            DateTime     @default(now())
+  updatedAt                                            DateTime     @updatedAt
+  userId                                               Int
+  projectId                                            Int?
+
+  //                                                   Relations
+  user                                                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project                                              Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  timeEntries                                          TimeEntry[]
+  subtasks                                             Subtask[]
+
   @@index([userId])
   @@index([projectId])
   @@index([assignedTo])
@@ -279,35 +286,35 @@ enum TaskStatus {
 }
 
 model Subtask {
-  id          Int      @id @default(autoincrement())
-  taskId      Int
-  title       String
-  completed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  
+  id        Int       @id @default(autoincrement())
+  taskId    Int
+  title     String
+  completed Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
   @@index([taskId])
 }
 
 model TimeEntry {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   startTime   DateTime?
   endTime     DateTime?
   duration    Int
   description String?
-  isBillable  Boolean  @default(true)
-  isManual    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  isBillable  Boolean    @default(true)
+  isManual    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
   userId      Int
   taskId      Int?
   projectId   Int?
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task        Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
+
+  //          Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
   @@index([userId])
   @@index([taskId])
   @@index([projectId])
@@ -316,32 +323,32 @@ model TimeEntry {
 
 // ============ INVOICES & PAYMENTS ============
 model Invoice {
-  id              Int            @id @default(autoincrement())
-  invoiceNumber   String         @unique
-  amount          Float
-  tax             Float          @default(0)
-  discount        Float          @default(0)
-  totalAmount     Float
-  status          InvoiceStatus  @default(UNPAID)
-  dueDate         DateTime?
-  paidDate        DateTime?
-  paymentTerms    String?
-  notes           String?
-  currency        String         @default("USD")
-  pdfUrl          String?
-  shareableLink   String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  userId          Int
-  clientId        Int
-  
-  // Relations
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client          Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  items           InvoiceItem[]
-  payments        Payment[]
-  reminders       InvoiceReminder[]
-  
+  id            Int                @id @default(autoincrement())
+  invoiceNumber String             @unique
+  amount        Float
+  tax           Float              @default(0)
+  discount      Float              @default(0)
+  totalAmount   Float
+  status        InvoiceStatus      @default(UNPAID)
+  dueDate       DateTime?
+  paidDate      DateTime?
+  paymentTerms  String?
+  notes         String?
+  currency      String             @default("USD")
+  pdfUrl        String?
+  shareableLink String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  userId        Int
+  clientId      Int
+
+  //            Relations
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items         InvoiceItem[]
+  payments      Payment[]
+  reminders     InvoiceReminder[]
+
   @@index([userId])
   @@index([clientId])
   @@index([status])
@@ -358,29 +365,29 @@ enum InvoiceStatus {
 }
 
 model InvoiceItem {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   invoiceId   Int
   description String
-  quantity    Int     @default(1)
+  quantity    Int      @default(1)
   rate        Float
   amount      Float
-  
+
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  
+
   @@index([invoiceId])
 }
 
 model Payment {
-  id              Int            @id @default(autoincrement())
-  invoiceId       Int
-  amount          Float
-  paymentMethod   PaymentMethod
-  transactionId   String?
-  paymentDate     DateTime       @default(now())
-  notes           String?
-  
-  invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  
+  id            Int            @id @default(autoincrement())
+  invoiceId     Int
+  amount        Float
+  paymentMethod PaymentMethod
+  transactionId String?
+  paymentDate   DateTime       @default(now())
+  notes         String?
+
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
   @@index([invoiceId])
 }
 
@@ -396,33 +403,33 @@ enum PaymentMethod {
 }
 
 model InvoiceReminder {
-  id          Int      @id @default(autoincrement())
-  invoiceId   Int
-  sentAt      DateTime @default(now())
-  type        String
-  
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  
+  id        Int       @id @default(autoincrement())
+  invoiceId Int
+  sentAt    DateTime  @default(now())
+  type      String
+
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
   @@index([invoiceId])
 }
 
 // ============ PROPOSALS & CONTRACTS ============
 model Proposal {
-  id              Int              @id @default(autoincrement())
-  title           String
-  content         String
-  amount          Float?
-  status          ProposalStatus   @default(DRAFT)
-  approvedAt      DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  userId          Int
-  clientId        Int
-  
-  // Relations
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  id         Int             @id @default(autoincrement())
+  title      String
+  content    String
+  amount     Float?
+  status     ProposalStatus  @default(DRAFT)
+  approvedAt DateTime?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  userId     Int
+  clientId   Int
+
+  //         Relations
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client     Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([clientId])
   @@index([status])
@@ -436,24 +443,24 @@ enum ProposalStatus {
 }
 
 model Contract {
-  id              Int            @id @default(autoincrement())
-  title           String
-  content         String
-  startDate       DateTime?
-  endDate         DateTime?
-  status          ContractStatus @default(DRAFT)
-  signedAt        DateTime?
-  signatureUrl    String?
-  aiSummary       String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  userId          Int
-  clientId        Int
-  
-  // Relations
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client          Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  id           Int             @id @default(autoincrement())
+  title        String
+  content      String
+  startDate    DateTime?
+  endDate      DateTime?
+  status       ContractStatus  @default(DRAFT)
+  signedAt     DateTime?
+  signatureUrl String?
+  aiSummary    String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  userId       Int
+  clientId     Int
+
+  //           Relations
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([clientId])
   @@index([status])
@@ -469,21 +476,21 @@ enum ContractStatus {
 
 // ============ EXPENSE TRACKING ============
 model Expense {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   description String
   amount      Float
   category    String
-  date        DateTime @default(now())
+  date        DateTime  @default(now())
   receiptUrl  String?
   notes       String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   userId      Int
   projectId   Int?
-  
-  // Relations
+
+  //          Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
+
   @@index([userId])
   @@index([projectId])
   @@index([category])
@@ -492,23 +499,23 @@ model Expense {
 
 // ============ CALENDAR & SCHEDULING ============
 model Event {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  startTime   DateTime
-  endTime     DateTime
-  type        EventType
-  color       String?
-  location    String?
-  reminderAt  DateTime?
-  googleEventId String?
+  id             Int        @id @default(autoincrement())
+  title          String
+  description    String?
+  startTime      DateTime
+  endTime        DateTime
+  type           EventType
+  color          String?
+  location       String?
+  reminderAt     DateTime?
+  googleEventId  String?
   outlookEventId String?
-  createdAt   DateTime  @default(now())
-  userId      Int
-  
-  // Relations
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  createdAt      DateTime   @default(now())
+  userId         Int
+
+  //             Relations
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([startTime])
   @@index([type])
@@ -524,65 +531,65 @@ enum EventType {
 
 // ============ FILE MANAGEMENT ============
 model File {
-  id          Int      @id @default(autoincrement())
+  id          Int               @id @default(autoincrement())
   name        String
   url         String
   fileType    String
   size        Int
-  version     Int      @default(1)
-  uploadedAt  DateTime @default(now())
+  version     Int               @default(1)
+  uploadedAt  DateTime          @default(now())
   userId      Int
   projectId   Int?
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  //          Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
   permissions FilePermission[]
   versions    FileVersion[]
-  
+
   @@index([userId])
   @@index([projectId])
 }
 
 model FileVersion {
-  id          Int      @id @default(autoincrement())
-  fileId      Int
-  url         String
-  version     Int
-  uploadedAt  DateTime @default(now())
-  
-  file        File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  
+  id         Int       @id @default(autoincrement())
+  fileId     Int
+  url        String
+  version    Int
+  uploadedAt DateTime  @default(now())
+
+  file       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
   @@index([fileId])
 }
 
 model FilePermission {
-  id          Int      @id @default(autoincrement())
-  fileId      Int
-  email       String
-  canView     Boolean  @default(true)
-  canEdit     Boolean  @default(false)
-  canDelete   Boolean  @default(false)
-  
-  file        File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  
+  id        Int      @id @default(autoincrement())
+  fileId    Int
+  email     String
+  canView   Boolean  @default(true)
+  canEdit   Boolean  @default(false)
+  canDelete Boolean  @default(false)
+
+  file      File    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
   @@index([fileId])
   @@index([email])
 }
 
 // ============ NOTIFICATIONS ============
 model Notification {
-  id          Int              @id @default(autoincrement())
-  title       String
-  message     String
-  type        NotificationType
-  isRead      Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  userId      Int
-  
-  // Relations
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        Int               @id @default(autoincrement())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  userId    Int
+
+  //        Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
@@ -600,18 +607,18 @@ enum NotificationType {
 
 // ============ TEAM & ROLE MANAGEMENT ============
 model TeamMember {
-  id          Int      @id @default(autoincrement())
-  email       String
-  role        TeamRole @default(VIEWER)
-  invitedAt   DateTime @default(now())
-  acceptedAt  DateTime?
-  userId      Int
-  projectId   Int?
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  id         Int        @id @default(autoincrement())
+  email      String
+  role       TeamRole   @default(VIEWER)
+  invitedAt  DateTime   @default(now())
+  acceptedAt DateTime?
+  userId     Int
+  projectId  Int?
+
+  //         Relations
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([projectId])
   @@index([email])
@@ -625,32 +632,32 @@ enum TeamRole {
 
 // ============ CLIENT PORTAL ============
 model ClientPortalAccess {
-  id          Int      @id @default(autoincrement())
-  clientId    Int      @unique
-  email       String   @unique
-  password    String
-  lastLogin   DateTime?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  
-  // Relations
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  id        Int        @id @default(autoincrement())
+  clientId  Int        @unique
+  email     String     @unique
+  password  String
+  lastLogin DateTime?
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+
+  //        Relations
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([email])
 }
 
 model Message {
-  id          Int      @id @default(autoincrement())
-  content     String
-  isFromClient Boolean @default(false)
-  isRead      Boolean  @default(false)
-  sentAt      DateTime @default(now())
-  userId      Int
-  clientEmail String
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id           Int       @id @default(autoincrement())
+  content      String
+  isFromClient Boolean   @default(false)
+  isRead       Boolean   @default(false)
+  sentAt       DateTime  @default(now())
+  userId       Int
+  clientEmail  String
+
+  //           Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([clientEmail])
   @@index([sentAt])
@@ -658,36 +665,36 @@ model Message {
 
 // ============ ACTIVITY LOGS ============
 model ActivityLog {
-  id          Int      @id @default(autoincrement())
-  action      String
-  details     String?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-  userId      Int
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        Int       @id @default(autoincrement())
+  action    String
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  userId    Int
+
+  //        Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
 }
 
 // ============ BONUS & GROWTH FEATURES ============
 model Referral {
-  id              Int      @id @default(autoincrement())
-  referrerId      Int
-  referredUserId  Int?
-  referralCode    String   @unique
-  status          ReferralStatus @default(PENDING)
-  creditsEarned   Float    @default(0)
-  createdAt       DateTime @default(now())
-  completedAt     DateTime?
-  
-  // Relations
-  referrer        User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
-  referredUser    User?    @relation("ReferredBy", fields: [referredUserId], references: [id], onDelete: SetNull)
-  
+  id             Int             @id @default(autoincrement())
+  referrerId     Int
+  referredUserId Int?
+  referralCode   String          @unique
+  status         ReferralStatus  @default(PENDING)
+  creditsEarned  Float           @default(0)
+  createdAt      DateTime        @default(now())
+  completedAt    DateTime?
+
+  //             Relations
+  referrer       User           @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser   User?          @relation("ReferredBy", fields: [referredUserId], references: [id], onDelete: SetNull)
+
   @@index([referrerId])
   @@index([referredUserId])
   @@index([referralCode])
@@ -700,39 +707,39 @@ enum ReferralStatus {
 }
 
 model Template {
-  id          Int      @id @default(autoincrement())
-  name        String
-  category    String
-  content     String
-  price       Float    @default(0)
-  isFree      Boolean  @default(true)
-  downloads   Int      @default(0)
-  createdAt   DateTime @default(now())
-  
+  id        Int       @id @default(autoincrement())
+  name      String
+  category  String
+  content   String
+  price     Float     @default(0)
+  isFree    Boolean   @default(true)
+  downloads Int       @default(0)
+  createdAt DateTime  @default(now())
+
   @@index([category])
 }
 
 model CommunityPost {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
   content     String
   authorEmail String
-  likes       Int      @default(0)
-  createdAt   DateTime @default(now())
-  
+  likes       Int       @default(0)
+  createdAt   DateTime  @default(now())
+
   @@index([authorEmail])
   @@index([createdAt])
 }
 
 // ============ AI FEATURES ============
 model AIInsight {
-  id          Int      @id @default(autoincrement())
-  type        AIInsightType
-  content     String
-  metadata    String?
-  createdAt   DateTime @default(now())
-  userId      Int
-  
+  id        Int            @id @default(autoincrement())
+  type      AIInsightType
+  content   String
+  metadata  String?
+  createdAt DateTime       @default(now())
+  userId    Int
+
   @@index([userId])
   @@index([type])
   @@index([createdAt])
@@ -749,8 +756,8 @@ enum AIInsightType {
 
 // ============ SYSTEM SETTINGS ============
 model SystemSettings {
-  id          Int      @id @default(autoincrement())
-  key         String   @unique
-  value       String
-  updatedAt   DateTime @updatedAt
+  id        Int       @id @default(autoincrement())
+  key       String    @unique
+  value     String
+  updatedAt DateTime  @updatedAt
 }
